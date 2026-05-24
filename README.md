@@ -191,3 +191,11 @@ JavaScriptが有効になっているか確認してください。
 ---
 
 **THE WALL STREET** - あなたの投資スキルが試される。
+
+## 公開デモ
+
+ライブデモ（GitHub Pages）:
+
+- https://burugou05-wq.github.io/buru-trade/
+
+ページはビルド中の場合があります。数分待って再読み込みしてください。
