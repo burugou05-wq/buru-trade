@@ -1,0 +1,215 @@
+/* ダッシュボード - css/dashboard.css */
+
+/* メインコンテナ */
+main {
+    backdrop-filter: blur(5px);
+}
+
+/* セクションの背景 */
+section {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(51, 65, 85, 0.3) 100%);
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+/* チャートコンテナ */
+.chart-container {
+    position: relative;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%);
+    border-radius: 0.875rem;
+    overflow: hidden;
+}
+
+/* チャート */
+#stockChart {
+    width: 100%;
+    height: 100%;
+}
+
+/* グリッド背景 */
+canvas {
+    background: linear-gradient(
+        rgba(59, 130, 246, 0.05) 1px,
+        transparent 1px
+    ),
+    linear-gradient(
+        90deg,
+        rgba(59, 130, 246, 0.05) 1px,
+        transparent 1px
+    );
+    background-size: 50px 50px;
+}
+
+/* 価格情報パネル */
+#chart-price-info {
+    animation: slideIn 0.5s ease-out;
+    padding: 1rem;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%);
+    border-radius: 0.75rem;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* 取引パネル */
+#trade-panel {
+    animation: slideUp 0.5s ease-out;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+#trade-panel > div {
+    background: linear-gradient(135deg, rgba(51, 65, 85, 0.4) 0%, rgba(30, 41, 59, 0.3) 100%);
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    padding: 1rem;
+    border-radius: 0.75rem;
+    backdrop-filter: blur(10px);
+}
+
+/* ホバーエフェクト */
+#trade-panel > div:hover {
+    border-color: rgba(59, 130, 246, 0.5);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(30, 41, 59, 0.4) 100%);
+}
+
+/* 取引フォーム */
+#trade-form {
+    animation: slideUp 0.5s ease-out;
+    background: linear-gradient(135deg, rgba(51, 65, 85, 0.3) 0%, rgba(30, 41, 59, 0.2) 100%);
+    padding: 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+/* リスト系 */
+#market-list,
+#portfolio-list,
+#missions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* リストアイテムのアニメーション */
+#market-list > div,
+#portfolio-list > div,
+#missions-list > div {
+    animation: slideUp 0.3s ease-out;
+}
+
+/* スモークテスト用 */
+.highlight {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(99, 102, 241, 0.1) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.5);
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+}
+
+/* グリッドレイアウト */
+.grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 1024px) {
+    .grid-3 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .grid-2,
+    .grid-3 {
+        grid-template-columns: 1fr;
+    }
+
+    #trade-panel {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* 数値の色分け */
+.text-positive {
+    color: #10b981;
+}
+
+.text-negative {
+    color: #ef4444;
+}
+
+.text-neutral {
+    color: #94a3b8;
+}
+
+/* バッジ */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.badge-primary {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(99, 102, 241, 0.2) 100%);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.5);
+}
+
+.badge-success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(52, 211, 153, 0.2) 100%);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.5);
+}
+
+.badge-danger {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(248, 113, 113, 0.2) 100%);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.5);
+}
+
+.badge-warning {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.3) 0%, rgba(251, 191, 36, 0.2) 100%);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
+/* デスクトップレイアウト最適化 */
+@media (min-width: 1280px) {
+    main {
+        gap: 1rem;
+    }
+
+    section {
+        overflow: auto;
+    }
+}
+
+/* プリント用スタイル */
+@media print {
+    body {
+        background: white;
+    }
+
+    section,
+    header,
+    footer {
+        background: white;
+        border: none;
+        box-shadow: none;
+    }
+
+    button,
+    .control-btn {
+        display: none;
+    }
+}

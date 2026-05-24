@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE WALL STREET - 株取引シミュレーター</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body class="h-screen flex flex-col overflow-hidden selection:bg-blue-500 selection:text-white bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+
+    <!-- モーダル - チュートリアル -->
+    <div id="tutorial-modal" class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center hidden">
+        <div class="bg-slate-800 rounded-2xl border border-slate-700 max-w-2xl w-full mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-8">
+                <div class="flex items-center gap-3 mb-6">
+                    <i class="fa-solid fa-graduation-cap text-blue-400 text-2xl"></i>
+                    <h2 class="text-2xl font-bold text-white">ゲームチュートリアル</h2>
+                </div>
+                
+                <div class="space-y-6 text-slate-300">
+                    <div>
+                        <h3 class="text-lg font-bold text-blue-400 mb-2">📊 目的</h3>
+                        <p>資産を増やして、目標金額に到達することが目標です。</p>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-emerald-400 mb-2">🎯 基本操作</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-2">
+                            <li>企業をリストから選択してチャートを表示</li>
+                            <li>過去の価格推移を分析して購入/売却</li>
+                            <li>ニュースイベントで価格が大きく変動</li>
+                            <li>時間を進めてシミュレーション</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-purple-400 mb-2">💡 投資のコツ</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-2">
+                            <li>複数の企業に分散投資</li>
+                            <li>マクロ経済の状態を参考に</li>
+                            <li>ニュースの影響を考慮</li>
+                            <li>利確・損切りのタイミングが重要</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 mt-8">
+                    <button onclick="closeTutorial()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-bold transition">
+                        スキップ
+                    </button>
+                    <button onclick="closeTutorial()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-bold transition">
+                        了解して開始
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- モーダル - 難易度選択 -->
+    <div id="difficulty-modal" class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center hidden">
+        <div class="bg-slate-800 rounded-2xl border border-slate-700 max-w-2xl w-full mx-4 shadow-2xl">
+            <div class="p-8">
+                <h2 class="text-3xl font-bold text-white mb-8 flex items-center gap-3">
+                    <i class="fa-solid fa-trophy text-yellow-400"></i>難易度を選択
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <button onclick="setDifficulty('easy')" class="difficulty-card p-6 bg-slate-700 hover:bg-slate-600 rounded-xl border-2 border-slate-600 transition text-left cursor-pointer">
+                        <i class="fa-solid fa-dove text-green-400 text-2xl mb-3"></i>
+                        <h3 class="text-xl font-bold text-white">イージー</h3>
+                        <p class="text-sm text-slate-400 mt-2">初心者向け</p>
+                        <ul class="text-xs text-slate-300 mt-3 space-y-1">
+                            <li>✓ 初期資金: 500万円</li>
+                            <li>✓ マクロ変動: 小さい</li>
+                            <li>✓ ニュース: 少ない</li>
+                        </ul>
+                    </button>
+                    
+                    <button onclick="setDifficulty('normal')" class="difficulty-card p-6 bg-blue-700 hover:bg-blue-600 rounded-xl border-2 border-blue-500 transition text-left cursor-pointer ring-2 ring-blue-400">
+                        <i class="fa-solid fa-user-graduate text-blue-300 text-2xl mb-3"></i>
+                        <h3 class="text-xl font-bold text-white">ノーマル</h3>
+                        <p class="text-sm text-slate-300 mt-2">推奨</p>
+                        <ul class="text-xs text-slate-200 mt-3 space-y-1">
+                            <li>✓ 初期資金: 100万円</li>
+                            <li>✓ マクロ変動: 中程度</li>
+                            <li>✓ ニュース: 標準</li>
+                        </ul>
+                    </button>
+                    
+                    <button onclick="setDifficulty('hard')" class="difficulty-card p-6 bg-slate-700 hover:bg-slate-600 rounded-xl border-2 border-slate-600 transition text-left cursor-pointer">
+                        <i class="fa-solid fa-skull text-red-400 text-2xl mb-3"></i>
+                        <h3 class="text-xl font-bold text-white">ハード</h3>
+                        <p class="text-sm text-slate-400 mt-2">上級者向け</p>
+                        <ul class="text-xs text-slate-300 mt-3 space-y-1">
+                            <li>✓ 初期資金: 100万円</li>
+                            <li>✓ マクロ変動: 大きい</li>
+                            <li>✓ ニュース: 多い</li>
+                        </ul>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ヘッダー -->
+    <header class="header-gradient border-b border-slate-700/50 px-6 py-4 flex justify-between items-center z-10 shrink-0 shadow-2xl">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
+                <i class="fa-solid fa-chart-line text-white text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-black tracking-wider text-white">THE WALL STREET</h1>
+                <p class="text-xs text-slate-400">Stock Trading Simulator</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-8">
+            <!-- ゲーム統計 -->
+            <div class="stats-box hidden sm:flex">
+                <div class="stat-item">
+                    <span class="stat-label">総資産</span>
+                    <span class="stat-value text-blue-400" id="total-asset">¥1,000,000</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span class="stat-label">現金</span>
+                    <span class="stat-value text-emerald-400" id="cash-balance">¥1,000,000</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span class="stat-label">ポートフォリオ</span>
+                    <span class="stat-value text-purple-400" id="portfolio-value">¥0</span>
+                </div>
+            </div>
+            
+            <!-- ゲームコントロール -->
+            <div class="flex items-center gap-3">
+                <button id="btn-play-pause" class="control-btn play-btn" title="再生/一時停止">
+                    <i class="fa-solid fa-play"></i>
+                </button>
+                <button id="btn-speed" class="control-btn speed-btn">x1</button>
+                <button onclick="openSettings()" class="control-btn settings-btn" title="設定">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- 日付・マクロ経済 -->
+        <div class="text-right min-w-[150px]">
+            <p class="text-sm text-slate-400">現在の日付</p>
+            <p class="text-xl font-bold text-white" id="current-date">Day 1</p>
+            <p class="text-xs text-slate-400" id="macro-indicator">📊 マクロ経済: 安定</p>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden gap-4 p-4">
+        
+        <!-- 左パネル: 市場銘柄リスト -->
+        <section class="w-full lg:w-80 bg-slate-800/50 backdrop-blur rounded-xl border border-slate-700 flex flex-col overflow-hidden shrink-0 shadow-lg">
+            <div class="panel-header">
+                <i class="fa-solid fa-building"></i>
+                <span>市場銘柄</span>
+                <span class="text-xs bg-blue-600 px-2 py-1 rounded-full" id="market-count">8</span>
+            </div>
+            
+            <div id="market-list" class="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+                <!-- 銘柄リストがJSで挿入されます -->
+            </div>
+        </section>
+
+        <!-- 中央パネル: チャートと取引 -->
+        <section class="flex-1 flex flex-col overflow-hidden">
+            <!-- チャート領域 -->
+            <div class="bg-slate-800/50 backdrop-blur rounded-xl border border-slate-700 flex flex-col overflow-hidden flex-1 shadow-lg">
+                <div class="p-4 border-b border-slate-700 flex justify-between items-end">
+                    <div>
+                        <h2 class="text-3xl font-bold text-white" id="chart-title">銘柄を選択</h2>
+                        <p class="text-sm text-slate-400 mt-1" id="chart-sector">-</p>
+                    </div>
+                    <div class="text-right hidden" id="chart-price-info">
+                        <div class="flex items-baseline gap-2">
+                            <p class="text-4xl font-black text-white" id="chart-price">¥-</p>
+                            <p class="text-xl font-bold" id="chart-change">-</p>
+                        </div>
+                        <div class="flex gap-8 mt-2 text-xs text-slate-400 justify-end">
+                            <div>
+                                <span>PE: </span>
+                                <span class="text-slate-200" id="chart-pe">-</span>
+                            </div>
+                            <div>
+                                <span>配当利回: </span>
+                                <span class="text-slate-200" id="chart-dividend">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex-1 p-4 min-h-[300px] relative">
+                    <canvas id="stockChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 取引パネル -->
+            <div class="mt-4 bg-slate-800/50 backdrop-blur rounded-xl border border-slate-700 p-6 shadow-lg">
+                <p class="text-slate-400 italic text-center" id="trade-placeholder">
+                    左のリストから企業を選択してください
+                </p>
+                
+                <div id="trade-panel" class="hidden grid grid-cols-4 gap-4">
+                    <!-- 保有状況 -->
+                    <div class="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
+                        <h3 class="text-xs font-bold text-slate-400 mb-3">保有数量</h3>
+                        <p class="text-3xl font-bold text-white" id="holding-qty">0</p>
+                        <p class="text-xs text-slate-400 mt-1">株</p>
+                    </div>
+                    
+                    <!-- 平均取得単価 -->
+                    <div class="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
+                        <h3 class="text-xs font-bold text-slate-400 mb-3">平均取得単価</h3>
+                        <p class="text-2xl font-bold text-slate-200" id="holding-avg-price">¥0</p>
+                    </div>
+                    
+                    <!-- 含み損益 -->
+                    <div class="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
+                        <h3 class="text-xs font-bold text-slate-400 mb-3">含み損益</h3>
+                        <p class="text-2xl font-bold" id="holding-profit">¥0</p>
+                    </div>
+                    
+                    <!-- 損益率 -->
+                    <div class="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
+                        <h3 class="text-xs font-bold text-slate-400 mb-3">損益率</h3>
+                        <p class="text-2xl font-bold" id="holding-profit-rate">0%</p>
+                    </div>
+                </div>
+                
+                <!-- 取引フォーム -->
+                <div id="trade-form" class="hidden mt-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-300 mb-2">取引数量 (株)</label>
+                            <div class="flex gap-2">
+                                <input type="number" id="trade-qty" class="trade-input flex-1" min="1" value="10">
+                                <button onclick="setTradeQty(10)" class="qty-btn">+10</button>
+                                <button onclick="setTradeQty(100)" class="qty-btn">+100</button>
+                                <button onclick="setTradeQtyMax()" class="qty-btn">MAX</button>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-bold text-slate-300 mb-2">計算金額</label>
+                            <p class="text-2xl font-bold text-blue-400" id="trade-total">¥0</p>
+                        </div>
+                        
+                        <div class="flex gap-2 items-end">
+                            <button onclick="buyStock()" class="flex-1 btn-buy">
+                                <i class="fa-solid fa-arrow-up mr-2"></i>購入
+                            </button>
+                            <button onclick="sellStock()" class="flex-1 btn-sell">
+                                <i class="fa-solid fa-arrow-down mr-2"></i>売却
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右パネル: ポートフォリオ + ニュース -->
+        <section class="w-full lg:w-80 flex flex-col gap-4 overflow-hidden">
+            <!-- ポートフォリオ -->
+            <div class="bg-slate-800/50 backdrop-blur rounded-xl border border-slate-700 flex-1 flex flex-col overflow-hidden shadow-lg">
+                <div class="panel-header">
+                    <i class="fa-solid fa-wallet"></i>
+                    <span>ポートフォリオ</span>
+                    <span class="text-xs bg-purple-600 px-2 py-1 rounded-full" id="portfolio-count">0</span>
+                </div>
+                
+                <div id="portfolio-list" class="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+                    <p class="text-slate-500 text-sm text-center mt-4">保有株式はありません</p>
+                </div>
+            </div>
+
+            <!-- ミッション & ニュース -->
+            <div class="bg-slate-800/50 backdrop-blur rounded-xl border border-slate-700 flex-1 flex flex-col overflow-hidden shadow-lg">
+                <div class="panel-header">
+                    <i class="fa-solid fa-bullseye"></i>
+                    <span>ミッション</span>
+                    <span class="text-xs bg-amber-600 px-2 py-1 rounded-full" id="mission-progress">0/3</span>
+                </div>
+                
+                <div id="missions-list" class="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+                    <!-- ミッションがJSで挿入されます -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ニュースティッカー -->
+    <footer class="ticker-footer">
+        <div class="ticker-label">
+            <i class="fa-solid fa-bell-concierge"></i>
+            <span>BREAKING NEWS</span>
+        </div>
+        <div class="ticker-content">
+            <div class="ticker-text" id="news-ticker">
+                市場がオープンしました。最新のニュースがここに表示されます...
+            </div>
+        </div>
+    </footer>
+
+    <!-- トースト通知 -->
+    <div id="toast-container" class="fixed top-24 right-4 z-50 flex flex-col items-end pointer-events-none"></div>
+
+    <!-- スクリプト読み込み順序に注意 -->
+    <script src="js/config.js"></script>
+    <script src="js/company.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/missions.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/chart.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/main.js"></script>
+
+</body>
+</html>

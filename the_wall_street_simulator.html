@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE WALL STREET - 株取引シミュレーター</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for rendering stock charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            /* ダークテーマの背景色 */
+            background-color: #0f172a; 
+            color: #f8fafc;
+        }
+
+        /* ニュースティッカーのアニメーション */
+        @keyframes ticker {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .animate-ticker {
+            display: inline-block;
+            white-space: nowrap;
+            padding-left: 100%;
+            animation: ticker 30s linear infinite;
+        }
+        .ticker-container:hover .animate-ticker {
+            animation-play-state: paused;
+        }
+
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        
+        /* 数値の変動時のフラッシュエフェクト */
+        @keyframes flash-green {
+            0% { background-color: rgba(16, 185, 129, 0.4); }
+            100% { background-color: transparent; }
+        }
+        @keyframes flash-red {
+            0% { background-color: rgba(239, 68, 68, 0.4); }
+            100% { background-color: transparent; }
+        }
+        .flash-up { animation: flash-green 1s ease-out; }
+        .flash-down { animation: flash-red 1s ease-out; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden selection:bg-blue-500 selection:text-white">
+
+    <!-- ヘッダー部分 -->
+    <header class="bg-slate-900 border-b border-slate-700 px-6 py-4 flex flex-col sm:flex-row justify-between items-center z-10 shrink-0 shadow-md">
+        <div class="flex items-center gap-3 mb-4 sm:mb-0">
+            <i class="fa-solid fa-chart-line text-blue-500 text-2xl"></i>
+            <h1 class="text-xl font-bold tracking-wider text-slate-100">THE WALL STREET</h1>
+        </div>
+        
+        <div class="flex items-center gap-8 bg-slate-800 px-6 py-2 rounded-xl border border-slate-700">
+            <div class="text-center">
+                <p class="text-xs text-slate-400 font-medium">総資産額</p>
+                <p class="text-xl font-bold text-blue-400" id="total-asset">¥ 1,000,000</p>
+            </div>
+            <div class="w-px h-8 bg-slate-700"></div>
+            <div class="text-center">
+                <p class="text-xs text-slate-400 font-medium">現金残高</p>
+                <p class="text-xl font-bold text-emerald-400" id="cash-balance">¥ 1,000,000</p>
+            </div>
+            <div class="w-px h-8 bg-slate-700"></div>
+            <div class="text-center flex flex-col items-center">
+                <p class="text-xs text-slate-400 font-medium mb-1">進行コントロール</p>
+                <div class="flex gap-2">
+                    <button id="btn-play-pause" class="w-8 h-8 rounded bg-blue-600 hover:bg-blue-500 flex items-center justify-center transition" title="再生/一時停止">
+                        <i class="fa-solid fa-play" id="icon-play-pause"></i>
+                    </button>
+                    <button id="btn-speed" class="w-12 h-8 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold transition">x1</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4 sm:mt-0 text-right">
+            <p class="text-sm text-slate-400">現在の日付</p>
+            <p class="text-lg font-semibold text-slate-200" id="current-date">Day 1</p>
+            <p class="text-xs text-slate-500" id="macro-indicator">マクロ経済: 安定</p>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        
+        <!-- 左カラム: マーケットボード (銘柄一覧) -->
+        <section class="w-full md:w-1/4 lg:w-1/5 bg-slate-900 border-r border-slate-800 flex flex-col overflow-hidden shrink-0">
+            <div class="p-4 border-b border-slate-800 bg-slate-800/50">
+                <h2 class="font-semibold text-slate-200"><i class="fa-solid fa-building mr-2"></i>市場銘柄</h2>
+            </div>
+            <div class="flex-1 overflow-y-auto p-2" id="market-list">
+                <!-- 銘柄リストがJSで挿入されます -->
+            </div>
+        </section>
+
+        <!-- 中央カラム: チャートと取引パネル -->
+        <section class="w-full md:w-2/4 lg:w-3/5 flex flex-col overflow-hidden bg-slate-900 shrink-0">
+            
+            <!-- 上部: チャート領域 -->
+            <div class="flex-1 p-4 flex flex-col overflow-hidden relative border-b border-slate-800">
+                <div class="flex justify-between items-end mb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-100" id="chart-title">銘柄を選択してください</h2>
+                        <p class="text-slate-400 text-sm" id="chart-sector">-</p>
+                    </div>
+                    <div class="text-right hidden" id="chart-price-info">
+                        <p class="text-3xl font-bold" id="chart-price">¥ -</p>
+                        <p class="text-sm font-medium" id="chart-change">-</p>
+                    </div>
+                </div>
+                <div class="flex-1 w-full min-h-[250px] relative">
+                    <canvas id="stockChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 下部: 選択銘柄の取引・詳細パネル -->
+            <div class="h-48 bg-slate-800/50 p-6 shrink-0 flex items-center justify-center" id="trade-panel-container">
+                <!-- 銘柄未選択時 -->
+                <p class="text-slate-500 italic" id="trade-placeholder">銘柄を選択すると取引パネルが表示されます。</p>
+                
+                <!-- 銘柄選択時 -->
+                <div class="w-full max-w-2xl hidden grid-cols-2 gap-8" id="trade-panel">
+                    <!-- 情報 -->
+                    <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                        <h3 class="text-sm text-slate-400 mb-2">保有状況</h3>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-slate-300">保有数:</span>
+                            <span class="font-bold text-white" id="holding-qty">0 株</span>
+                        </div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-slate-300">平均取得単価:</span>
+                            <span class="font-bold text-white" id="holding-avg-price">¥ 0</span>
+                        </div>
+                        <div class="flex justify-between mt-3 pt-2 border-t border-slate-700">
+                            <span class="text-slate-300">含み損益:</span>
+                            <span class="font-bold" id="holding-profit">¥ 0</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 取引フォーム -->
+                    <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-slate-400">取引数量</span>
+                            <div class="space-x-1">
+                                <button class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded transition" onclick="setTradeQty(10)">+10</button>
+                                <button class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded transition" onclick="setTradeQty(100)">+100</button>
+                                <button class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded transition" onclick="setTradeQtyMax()">MAX</button>
+                            </div>
+                        </div>
+                        <input type="number" id="trade-qty" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none focus:border-blue-500 transition mb-3" min="1" value="10">
+                        
+                        <div class="flex gap-2">
+                            <button onclick="buyStock()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded transition shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                                購入 (BUY)
+                            </button>
+                            <button onclick="sellStock()" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 rounded transition shadow-[0_0_10px_rgba(244,63,94,0.2)]">
+                                売却 (SELL)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右カラム: ポートフォリオ & ニュース -->
+        <section class="w-full md:w-1/4 lg:w-1/5 bg-slate-900 border-l border-slate-800 flex flex-col overflow-hidden shrink-0">
+            <!-- ポートフォリオ -->
+            <div class="h-1/2 flex flex-col border-b border-slate-800">
+                <div class="p-3 border-b border-slate-800 bg-slate-800/50 flex justify-between items-center shrink-0">
+                    <h2 class="font-semibold text-slate-200"><i class="fa-solid fa-wallet mr-2"></i>ポートフォリオ</h2>
+                </div>
+                <div class="flex-1 overflow-y-auto p-2" id="portfolio-list">
+                    <!-- ポートフォリオがJSで挿入されます -->
+                    <p class="text-slate-500 text-sm text-center mt-4">保有株式はありません</p>
+                </div>
+            </div>
+            
+            <!-- ニュース履歴 -->
+            <div class="h-1/2 flex flex-col">
+                <div class="p-3 border-b border-slate-800 bg-slate-800/50 shrink-0">
+                    <h2 class="font-semibold text-slate-200"><i class="fa-solid fa-newspaper mr-2"></i>重要ニュース</h2>
+                </div>
+                <div class="flex-1 overflow-y-auto p-3 space-y-3" id="news-history">
+                    <!-- ニュース履歴 -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- フッター: 流れるニュースティッカー -->
+    <footer class="h-8 bg-slate-950 border-t border-slate-800 flex items-center overflow-hidden shrink-0 ticker-container relative">
+        <div class="absolute left-0 bg-slate-900 z-10 px-3 h-full flex items-center border-r border-slate-700 shadow-[5px_0_10px_rgba(0,0,0,0.5)]">
+            <span class="text-xs font-bold text-red-500">BREAKING NEWS</span>
+        </div>
+        <div class="animate-ticker text-sm text-slate-300" id="news-ticker">
+            市場がオープンしました。最新のニュースがここに表示されます...
+        </div>
+    </footer>
+
+    <!-- トースト通知コンテナ -->
+    <div id="toast-container" class="fixed top-20 right-4 z-50 flex flex-col items-end pointer-events-none"></div>
+
+    <script>
+        // --- 設定と状態変数 ---
+        const GAME_SPEEDS = [1000, 500, 100]; // 1日あたりのミリ秒 (x1, x2, x3)
+        let currentSpeedIndex = 0;
+        let isPlaying = false;
+        let gameInterval = null;
+        
+        let dayCount = 1;
+        let macroEconomy = 0; // -1.0(大不況) ~ 1.0(好景気)
+        
+        let selectedCompanyId = null;
+        let chartInstance = null;
+        
+        const HISTORY_LENGTH = 60; // チャートに表示する過去日数
+
+        // プレイヤーステータス
+        const player = {
+            cash: 1000000, // 100万円スタート
+            portfolio: {} // { companyId: { qty: 100, avgPrice: 1500 } }
+        };
+
+        // --- 企業クラスの定義 ---
+        class Company {
+            constructor(id, name, sector, initialPrice, volatility, basePerformance) {
+                this.id = id;
+                this.name = name;
+                this.sector = sector;
+                this.price = initialPrice;
+                this.prevPrice = initialPrice;
+                // 過去の価格履歴 (初期値で埋める)
+                this.history = Array(HISTORY_LENGTH).fill(initialPrice);
+                
+                // 変動の激しさ
+                this.volatility = volatility; 
+                
+                // 企業固有の業績 (-1.0 ~ 1.0)
+                this.performance = basePerformance; 
+                this.cyclePhase = Math.random() * Math.PI * 2; // 業績サイクルの位相
+                
+                // ニュースなどによる一時的な影響
+                this.newsEffect = 0; 
+            }
+
+            // 1日進める際の株価更新ロジック
+            updatePrice(macroStatus) {
+                this.prevPrice = this.price;
+
+                // 業績サイクルの進行 (徐々に変動)
+                this.cyclePhase += 0.02 + (Math.random() * 0.01);
+                const cycleEffect = Math.sin(this.cyclePhase) * 0.02;
+                
+                // 基本的なランダムウォーク (ボラティリティに依存)
+                const randomShock = (Math.random() - 0.5) * this.volatility;
+                
+                // マクロ経済と企業業績の影響
+                const fundamentalEffect = (macroStatus * 0.01) + (this.performance * 0.015);
+                
+                // 総変動率の計算
+                let changeRate = randomShock + cycleEffect + fundamentalEffect + this.newsEffect;
+                
+                // ストップ高・ストップ安の制限 (1日で最大±15%程度)
+                changeRate = Math.max(-0.15, Math.min(0.15, changeRate));
+
+                // 価格の更新
+                this.price = Math.round(this.price * (1 + changeRate));
+                if (this.price < 10) this.price = 10; // 上場廃止回避（最低10円）
+
+                // ニュース効果の減衰
+                this.newsEffect *= 0.8;
+
+                // 履歴の更新
+                this.history.shift();
+                this.history.push(this.price);
+            }
+
+            getChangePercent() {
+                if (this.prevPrice === 0) return 0;
+                return ((this.price - this.prevPrice) / this.prevPrice) * 100;
+            }
+        }
+
+        // --- 企業データの初期化 ---
+        const companies = [
+            new Company("TECH", "TechNova Systems", "IT・通信", 3200, 0.06, 0.2),
+            new Company("BANK", "Global Central Bank", "金融", 1500, 0.02, 0.1),
+            new Company("AUTO", "AutoFuture Motors", "自動車", 2400, 0.035, 0.0),
+            new Company("ENRG", "EcoEnergy Corp", "エネルギー", 1800, 0.04, -0.1),
+            new Company("HEAL", "BioHealth Pharma", "ヘルスケア", 4500, 0.05, 0.3),
+            new Company("AIR", "Sky Airlines", "運輸", 1200, 0.045, -0.2),
+            new Company("FOOD", "Daily FoodLife", "食品", 800, 0.015, 0.0),
+            new Company("BLD", "BuildPro Const.", "建設", 2100, 0.025, -0.1)
+        ];
+
+        // 企業IDからの検索用マップ
+        const companyMap = {};
+        companies.forEach(c => companyMap[c.id] = c);
+
+        // --- ニュースイベントの定義 ---
+        const newsEvents = [
+            { text: "政府が大規模な金融緩和策を発表。市場全体に好感。", target: "ALL", effect: 0.08, isGood: true },
+            { text: "中央銀行が予想外の利上げに踏み切る。警戒感広がる。", target: "ALL", effect: -0.06, isGood: false },
+            { text: "次世代AI技術のブレイクスルー。ITセクターに買い注文殺到。", target: "TECH", effect: 0.15, isGood: true },
+            { text: "Global Central Bank、過去最高の四半期利益を報告。", target: "BANK", effect: 0.10, isGood: true },
+            { text: "中東での地政学リスク高まる。原油価格が急騰。", target: "ENRG", effect: 0.12, isGood: true },
+            { text: "中東での地政学リスク高まる。燃料費高騰懸念で航空株下落。", target: "AIR", effect: -0.10, isGood: false },
+            { text: "BioHealth社、画期的な新薬の臨床試験に成功。", target: "HEAL", effect: 0.18, isGood: true },
+            { text: "AutoFuture社、大規模なリコールを発表。業績懸念。", target: "AUTO", effect: -0.15, isGood: false },
+            { text: "大規模なインフラ整備法案が可決。建設需要増の期待。", target: "BLD", effect: 0.09, isGood: true },
+            { text: "異常気象による不作懸念。食品セクターのコスト増。", target: "FOOD", effect: -0.08, isGood: false },
+            { text: "未知の感染症の噂。渡航制限への懸念から航空株急落。", target: "AIR", effect: -0.15, isGood: false },
+            { text: "未知の感染症の噂。医療・医薬セクターに資金流入。", target: "HEAL", effect: 0.12, isGood: true }
+        ];
+
+        let activeNews = [];
+
+        // --- ユーティリティ関数 ---
+        const formatMoney = (num) => '¥ ' + num.toLocaleString('ja-JP');
+        const formatPercent = (num) => (num > 0 ? '+' : '') + num.toFixed(2) + '%';
+        
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let colorClass = 'bg-blue-600';
+            let icon = '<i class="fa-solid fa-circle-info mr-2"></i>';
+            if (type === 'success') {
+                colorClass = 'bg-emerald-600';
+                icon = '<i class="fa-solid fa-check-circle mr-2"></i>';
+            } else if (type === 'error') {
+                colorClass = 'bg-rose-600';
+                icon = '<i class="fa-solid fa-triangle-exclamation mr-2"></i>';
+            }
+            
+            toast.className = `${colorClass} text-white px-4 py-3 rounded shadow-lg mb-3 opacity-0 transform translate-x-10 transition-all duration-300 flex items-center z-50`;
+            toast.innerHTML = `${icon}<span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            // アニメーション表示
+            requestAnimationFrame(() => {
+                toast.classList.remove('opacity-0', 'translate-x-10');
+            });
+            
+            // 数秒後に消去
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-x-10');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- UI描画関数 ---
+
+        // 銘柄リストの描画
+        function renderMarketList() {
+            const container = document.getElementById('market-list');
+            container.innerHTML = '';
+
+            companies.forEach(company => {
+                const changePct = company.getChangePercent();
+                const isUp = changePct >= 0;
+                const colorClass = isUp ? 'text-emerald-400' : 'text-rose-400';
+                const bgClass = company.id === selectedCompanyId ? 'bg-slate-700 border-blue-500' : 'bg-slate-800 border-slate-700 hover:bg-slate-700/50';
+                
+                const el = document.createElement('div');
+                el.className = `p-3 rounded-lg border cursor-pointer mb-2 transition flex justify-between items-center ${bgClass}`;
+                el.onclick = () => selectCompany(company.id);
+                
+                el.innerHTML = `
+                    <div class="overflow-hidden">
+                        <div class="font-bold text-slate-100 truncate">${company.name}</div>
+                        <div class="text-xs text-slate-400">${company.sector}</div>
+                    </div>
+                    <div class="text-right shrink-0 ml-2">
+                        <div class="font-bold text-slate-100">${company.price.toLocaleString()}</div>
+                        <div class="text-xs font-medium ${colorClass}">${formatPercent(changePct)}</div>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        // 選択された銘柄の詳細を更新
+        function updateSelectedCompanyDetails() {
+            const c = companyMap[selectedCompanyId];
+            if (!c) {
+                document.getElementById('trade-placeholder').classList.remove('hidden');
+                document.getElementById('trade-panel').classList.add('hidden');
+                document.getElementById('chart-price-info').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('chart-title').textContent = c.name;
+            document.getElementById('chart-sector').textContent = `${c.id} | ${c.sector}`;
+            
+            document.getElementById('trade-placeholder').classList.add('hidden');
+            document.getElementById('trade-panel').classList.remove('hidden');
+            document.getElementById('trade-panel').classList.add('grid');
+            
+            const priceInfo = document.getElementById('chart-price-info');
+            priceInfo.classList.remove('hidden');
+            
+            const priceEl = document.getElementById('chart-price');
+            const changeEl = document.getElementById('chart-change');
+            
+            priceEl.textContent = formatMoney(c.price);
+            
+            const changePct = c.getChangePercent();
+            changeEl.textContent = `${c.price - c.prevPrice > 0 ? '+' : ''}${(c.price - c.prevPrice).toLocaleString()} (${formatPercent(changePct)})`;
+            changeEl.className = `text-sm font-medium ${changePct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+            // アニメーション
+            priceEl.parentElement.classList.remove('flash-up', 'flash-down');
+            void priceEl.parentElement.offsetWidth; // trigger reflow
+            if (c.price > c.prevPrice) priceEl.parentElement.classList.add('flash-up');
+            else if (c.price < c.prevPrice) priceEl.parentElement.classList.add('flash-down');
+
+            // 保有状況の更新
+            const holding = player.portfolio[c.id];
+            if (holding && holding.qty > 0) {
+                document.getElementById('holding-qty').textContent = `${holding.qty} 株`;
+                document.getElementById('holding-avg-price').textContent = formatMoney(Math.round(holding.avgPrice));
+                
+                const currentValue = holding.qty * c.price;
+                const costValue = holding.qty * holding.avgPrice;
+                const profit = currentValue - costValue;
+                
+                const profitEl = document.getElementById('holding-profit');
+                profitEl.textContent = (profit > 0 ? '+' : '') + formatMoney(Math.round(profit));
+                profitEl.className = `font-bold ${profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+            } else {
+                document.getElementById('holding-qty').textContent = '0 株';
+                document.getElementById('holding-avg-price').textContent = '¥ 0';
+                const profitEl = document.getElementById('holding-profit');
+                profitEl.textContent = '¥ 0';
+                profitEl.className = 'font-bold text-slate-500';
+            }
+        }
+
+        // チャートの初期化と更新
+        function initChart() {
+            const ctx = document.getElementById('stockChart').getContext('2d');
+            
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = 'Inter';
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array(HISTORY_LENGTH).fill(''),
+                    datasets: [{
+                        label: '株価',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return '¥ ' + context.parsed.y.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: false, // X軸のラベルを隠す
+                            grid: { display: false }
+                        },
+                        y: {
+                            position: 'right',
+                            grid: {
+                                color: 'rgba(51, 65, 85, 0.5)',
+                                drawBorder: false,
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (!selectedCompanyId || !chartInstance) return;
+            const c = companyMap[selectedCompanyId];
+            
+            // 上昇トレンドか下降トレンドかで色を変える
+            const firstPrice = c.history[0];
+            const lastPrice = c.history[c.history.length - 1];
+            const isUp = lastPrice >= firstPrice;
+            
+            const color = isUp ? '#10b981' : '#ef4444'; // Emerald or Rose
+            const bgColor = isUp ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+
+            chartInstance.data.datasets[0].data = [...c.history];
+            chartInstance.data.datasets[0].borderColor = color;
+            chartInstance.data.datasets[0].backgroundColor = bgColor;
+            
+            chartInstance.update();
+        }
+
+        // --- プレイヤーロジック ---
+        function updatePlayerStats() {
+            let totalPortfolioValue = 0;
+            for (const [id, holding] of Object.entries(player.portfolio)) {
+                if (holding.qty > 0) {
+                    totalPortfolioValue += holding.qty * companyMap[id].price;
+                }
+            }
+            
+            const totalAsset = player.cash + totalPortfolioValue;
+            
+            // 資産表示の更新
+            const assetEl = document.getElementById('total-asset');
+            const prevAsset = parseInt(assetEl.dataset.value || 1000000);
+            
+            assetEl.textContent = formatMoney(totalAsset);
+            assetEl.dataset.value = totalAsset;
+            document.getElementById('cash-balance').textContent = formatMoney(player.cash);
+
+            if (totalAsset > prevAsset) {
+                assetEl.classList.remove('text-blue-400', 'text-rose-400');
+                assetEl.classList.add('text-emerald-400');
+            } else if (totalAsset < prevAsset) {
+                assetEl.classList.remove('text-blue-400', 'text-emerald-400');
+                assetEl.classList.add('text-rose-400');
+            }
+            
+            renderPortfolio();
+        }
+
+        function renderPortfolio() {
+            const container = document.getElementById('portfolio-list');
+            container.innerHTML = '';
+            
+            let hasStock = false;
+
+            for (const [id, holding] of Object.entries(player.portfolio)) {
+                if (holding.qty <= 0) continue;
+                hasStock = true;
+                
+                const company = companyMap[id];
+                const currentVal = holding.qty * company.price;
+                const costVal = holding.qty * holding.avgPrice;
+                const profit = currentVal - costVal;
+                const profitPct = (profit / costVal) * 100;
+                
+                const isProfitable = profit >= 0;
+                const colorClass = isProfitable ? 'text-emerald-400' : 'text-rose-400';
+                
+                const el = document.createElement('div');
+                el.className = 'bg-slate-800 p-2 rounded border border-slate-700 mb-2 cursor-pointer hover:bg-slate-700 transition';
+                el.onclick = () => selectCompany(id);
+                
+                el.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold text-sm text-slate-200">${company.name}</span>
+                        <span class="text-xs text-slate-400">${holding.qty}株</span>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <span class="text-sm font-bold text-white">${formatMoney(currentVal)}</span>
+                        <span class="text-xs font-bold ${colorClass}">${profit > 0 ? '+' : ''}${formatMoney(Math.round(profit))}</span>
+                    </div>
+                `;
+                container.appendChild(el);
+            }
+
+            if (!hasStock) {
+                container.innerHTML = '<p class="text-slate-500 text-sm text-center mt-4">保有株式はありません</p>';
+            }
+        }
+
+        // 取引ボタンアクション
+        function setTradeQty(qty) {
+            const input = document.getElementById('trade-qty');
+            input.value = Math.max(1, parseInt(input.value || 0) + qty);
+        }
+
+        function setTradeQtyMax() {
+            if (!selectedCompanyId) return;
+            const price = companyMap[selectedCompanyId].price;
+            const maxQty = Math.floor(player.cash / price);
+            document.getElementById('trade-qty').value = maxQty > 0 ? maxQty : 1;
+        }
+
+        function buyStock() {
+            if (!selectedCompanyId) return;
+            const company = companyMap[selectedCompanyId];
+            const qty = parseInt(document.getElementById('trade-qty').value);
+            
+            if (isNaN(qty) || qty <= 0) {
+                showToast("正しい数量を入力してください。", "error");
+                return;
+            }
+            
+            const cost = company.price * qty;
+            if (player.cash < cost) {
+                showToast("現金残高が不足しています。", "error");
+                return;
+            }
+            
+            // 決済
+            player.cash -= cost;
+            if (!player.portfolio[company.id]) {
+                player.portfolio[company.id] = { qty: 0, avgPrice: 0 };
+            }
+            
+            const holding = player.portfolio[company.id];
+            // 平均取得単価の計算: (既存総コスト + 新規コスト) / 新規総数量
+            const totalCost = (holding.qty * holding.avgPrice) + cost;
+            holding.qty += qty;
+            holding.avgPrice = totalCost / holding.qty;
+            
+            showToast(`${company.name} を ${qty}株 購入しました。`, "success");
+            
+            updatePlayerStats();
+            updateSelectedCompanyDetails();
+        }
+
+        function sellStock() {
+            if (!selectedCompanyId) return;
+            const company = companyMap[selectedCompanyId];
+            const qty = parseInt(document.getElementById('trade-qty').value);
+            
+            if (isNaN(qty) || qty <= 0) {
+                showToast("正しい数量を入力してください。", "error");
+                return;
+            }
+            
+            const holding = player.portfolio[company.id];
+            if (!holding || holding.qty < qty) {
+                showToast("保有株式数が不足しています。", "error");
+                return;
+            }
+            
+            // 決済
+            const revenue = company.price * qty;
+            player.cash += revenue;
+            holding.qty -= qty;
+            
+            // 損益計算（通知用）
+            const profit = revenue - (holding.avgPrice * qty);
+            const profitStr = profit >= 0 ? `+${formatMoney(Math.round(profit))}` : formatMoney(Math.round(profit));
+            
+            showToast(`${company.name} を ${qty}株 売却しました。(損益: ${profitStr})`, profit >= 0 ? "success" : "error");
+            
+            updatePlayerStats();
+            updateSelectedCompanyDetails();
+        }
+
+        // --- ゲーム進行ロジック ---
+
+        function addNews(news) {
+            // ティッカーに追加
+            const ticker = document.getElementById('news-ticker');
+            ticker.textContent = `【DAY ${dayCount}】 ${news.text} --- ${ticker.textContent}`.substring(0, 200); // 長くなりすぎないように
+            
+            // 履歴に追加
+            const history = document.getElementById('news-history');
+            const el = document.createElement('div');
+            el.className = `p-2 rounded text-sm border-l-4 bg-slate-800 ${news.isGood ? 'border-emerald-500' : 'border-rose-500'}`;
+            el.innerHTML = `
+                <div class="text-xs text-slate-400 mb-1">Day ${dayCount}</div>
+                <div class="text-slate-200">${news.text}</div>
+            `;
+            history.prepend(el);
+            
+            // 古い履歴を削除 (最大20件)
+            if (history.children.length > 20) {
+                history.removeChild(history.lastChild);
+            }
+            
+            // トースト表示
+            showToast("ニュース速報: " + news.text, news.isGood ? "success" : "error");
+        }
+
+        function generateEvents() {
+            // 5%の確率でニュース発生
+            if (Math.random() < 0.05) {
+                const event = newsEvents[Math.floor(Math.random() * newsEvents.length)];
+                addNews(event);
+                
+                // 効果の適用
+                if (event.target === "ALL") {
+                    companies.forEach(c => c.newsEffect += event.effect);
+                } else {
+                    const c = companyMap[event.target];
+                    if (c) c.newsEffect += event.effect;
+                }
+            }
+        }
+
+        function gameTick() {
+            dayCount++;
+            document.getElementById('current-date').textContent = `Day ${dayCount}`;
+            
+            // マクロ経済の変動 (-1.0 ~ 1.0)
+            macroEconomy += (Math.random() - 0.5) * 0.1;
+            macroEconomy = Math.max(-1.0, Math.min(1.0, macroEconomy));
+            
+            let macroText = "安定";
+            if (macroEconomy > 0.6) macroText = "好景気";
+            else if (macroEconomy > 0.2) macroText = "やや好景気";
+            else if (macroEconomy < -0.6) macroText = "不況";
+            else if (macroEconomy < -0.2) macroText = "やや不況";
+            document.getElementById('macro-indicator').textContent = `マクロ経済: ${macroText}`;
+
+            generateEvents();
+
+            // 各企業データの更新
+            companies.forEach(c => c.updatePrice(macroEconomy));
+
+            // UI更新
+            renderMarketList();
+            updateSelectedCompanyDetails();
+            updateChart();
+            updatePlayerStats();
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            const icon = document.getElementById('icon-play-pause');
+            const btn = document.getElementById('btn-play-pause');
+            
+            if (isPlaying) {
+                icon.className = 'fa-solid fa-pause';
+                btn.classList.replace('bg-blue-600', 'bg-amber-600');
+                btn.classList.replace('hover:bg-blue-500', 'hover:bg-amber-500');
+                startGameLoop();
+                showToast("シミュレーションを再開しました");
+            } else {
+                icon.className = 'fa-solid fa-play';
+                btn.classList.replace('bg-amber-600', 'bg-blue-600');
+                btn.classList.replace('hover:bg-amber-500', 'hover:bg-blue-500');
+                stopGameLoop();
+                showToast("シミュレーションを一時停止しました");
+            }
+        }
+
+        function changeSpeed() {
+            currentSpeedIndex = (currentSpeedIndex + 1) % GAME_SPEEDS.length;
+            document.getElementById('btn-speed').textContent = `x${currentSpeedIndex + 1}`;
+            
+            if (isPlaying) {
+                stopGameLoop();
+                startGameLoop();
+            }
+        }
+
+        function startGameLoop() {
+            if (gameInterval) clearInterval(gameInterval);
+            gameInterval = setInterval(gameTick, GAME_SPEEDS[currentSpeedIndex]);
+        }
+
+        function stopGameLoop() {
+            if (gameInterval) {
+                clearInterval(gameInterval);
+                gameInterval = null;
+            }
+        }
+
+        function selectCompany(id) {
+            selectedCompanyId = id;
+            renderMarketList(); // 選択状態の背景色更新のため
+            updateSelectedCompanyDetails();
+            updateChart();
+        }
+
+        // --- 初期化 ---
+        function init() {
+            initChart();
+            renderMarketList();
+            updatePlayerStats();
+            
+            // 初期選択
+            selectCompany(companies[0].id);
+
+            // イベントリスナー
+            document.getElementById('btn-play-pause').addEventListener('click', togglePlay);
+            document.getElementById('btn-speed').addEventListener('click', changeSpeed);
+            
+            // エンターキーで取引数量確定防止（フォーム送信防止）
+            document.getElementById('trade-qty').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') e.preventDefault();
+            });
+
+            // 初期状態は停止、トースト案内
+            setTimeout(() => {
+                showToast("ゲーム開始！再生ボタンで時間を進めてください。");
+            }, 500);
+        }
+
+        // DOMContentLoaded後に初期化
+        window.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>
