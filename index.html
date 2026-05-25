@@ -1,46 +1,132 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BURU_TRADE - Web版株取引シミュレーション</title>
-    <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE WALL STREET – 株取引シミュレーター</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- カスタム CSS -->
+    <link rel="stylesheet" href="./assets/css/main.css">
 </head>
-<body>
-    <div class="container">
-        <h1>BURU_TRADE</h1>
-        <section id="status">
-            <p><strong>Day:</strong> <span id="day">1</span></p>
-            <p><strong>Cash:</strong> $<span id="cash">1000.00</span></p>
-            <p><strong>Net Worth:</strong> $<span id="netWorth">1000.00</span></p>
-            <h2>Holdings</h2>
-            <ul id="holdingsList">
-                <li>(none)</li>
-            </ul>
-            <h2>Market Prices</h2>
-            <table id="marketTable">
-                <thead><tr><th>Company</th><th>Price</th></tr></thead>
-                <tbody></tbody>
-            </table>
-        </section>
-        <section id="controls">
-            <h2>Action</h2>
-            <select id="actionSelect">
-                <option value="buy">Buy</option>
-                <option value="sell">Sell</option>
-                <option value="skip">Skip (Next Day)</option>
-            </select>
-            <div id="tradeForm" class="hidden">
-                <label for="companySelect">Company:</label>
-                <select id="companySelect"></select>
-                <label for="shareInput">Shares:</label>
-                <input type="number" id="shareInput" min="1" value="1" />
-                <button id="confirmBtn">Confirm</button>
+<body class="h-screen flex flex-col overflow-hidden selection:bg-blue-500 selection:text-white">
+    <!-- ==== Header ==== -->
+    <header class="bg-slate-900 border-b border-slate-700 px-6 py-4 flex flex-col sm:flex-row justify-between items-center z-10 shrink-0 shadow-md">
+        <div class="flex items-center gap-3 mb-4 sm:mb-0">
+            <i class="fa-solid fa-chart-line text-blue-500 text-2xl"></i>
+            <h1 class="text-xl font-bold tracking-wider text-slate-100">THE WALL STREET</h1>
+        </div>
+        <div class="flex items-center gap-8 bg-slate-800 px-6 py-2 rounded-xl border border-slate-700">
+            <div class="text-center">
+                <p class="text-xs text-slate-400 font-medium">総資産額</p>
+                <p class="text-xl font-bold text-blue-400" id="total-asset">¥ 1,000,000</p>
             </div>
-            <button id="quitBtn">Quit (Show Final Net Worth)</button>
+            <div class="w-px h-8 bg-slate-700"></div>
+            <div class="text-center">
+                <p class="text-xs text-slate-400 font-medium">現金残高</p>
+                <p class="text-xl font-bold text-emerald-400" id="cash-balance">¥ 1,000,000</p>
+            </div>
+            <div class="w-px h-8 bg-slate-700"></div>
+            <div class="text-center flex flex-col items-center">
+                <p class="text-xs text-slate-400 font-medium mb-1">進行コントロール</p>
+                <div class="flex gap-2">
+                    <button id="btn-play-pause" class="w-8 h-8 rounded bg-blue-600 hover:bg-blue-500 flex items-center justify-center transition" title="再生/一時停止">
+                        <i class="fa-solid fa-play" id="icon-play-pause"></i>
+                    </button>
+                    <button id="btn-speed" class="w-12 h-8 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold transition">x1</button>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4 sm:mt-0 text-right">
+            <p class="text-sm text-slate-400">現在の日付</p>
+            <p class="text-lg font-semibold text-slate-200" id="current-date">Day 1</p>
+            <p class="text-xs text-slate-500" id="macro-indicator">マクロ経済: 安定</p>
+        </div>
+    </header>
+
+    <!-- ==== Main Content ==== -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        <!-- 左カラム: 銘柄リスト -->
+        <section class="w-full md:w-1/4 lg:w-1/5 bg-slate-900 border-r border-slate-800 flex flex-col overflow-hidden shrink-0">
+            <div class="p-4 border-b border-slate-800 bg-slate-800/50">
+                <h2 class="font-semibold text-slate-200"><i class="fa-solid fa-building mr-2"></i>市場銘柄</h2>
+            </div>
+            <div id="market-list" class="flex-1 overflow-y-auto p-2"></div>
         </section>
-        <section id="message" class="message"></section>
-    </div>
-    <script src="script.js"></script>
+
+        <!-- 中央カラム: チャート + 取引 -->
+        <section class="w-full md:w-2/4 lg:w-3/5 flex flex-col overflow-hidden bg-slate-900 shrink-0">
+            <div class="flex-1 p-4 flex flex-col overflow-hidden relative border-b border-slate-800">
+                <div class="flex justify-between items-end mb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-100" id="chart-title">銘柄を選択してください</h2>
+                        <p class="text-slate-400 text-sm" id="chart-sector">-</p>
+                    </div>
+                    <div class="text-right hidden" id="chart-price-info">
+                        <p class="text-3xl font-bold" id="chart-price">¥ -</p>
+                        <p class="text-sm font-medium" id="chart-change">-</p>
+                    </div>
+                </div>
+                <div class="flex-1 w-full min-h-[250px] relative">
+                    <canvas id="stockChart"></canvas>
+                </div>
+            </div>
+            <div class="h-48 bg-slate-800/50 p-6 shrink-0 flex items-center justify-center" id="trade-panel-container">
+                <p class="text-slate-500 italic" id="trade-placeholder">銘柄を選択すると取引パネルが表示されます。</p>
+                <div class="w-full max-w-2xl hidden grid-cols-2 gap-8" id="trade-panel">
+                    <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                        <h3 class="text-sm text-slate-400 mb-2">保有状況</h3>
+                        <div class="flex justify-between mb-1"><span class="text-slate-300">保有数:</span><span class="font-bold text-white" id="holding-qty">0 株</span></div>
+                        <div class="flex justify-between mb-1"><span class="text-slate-300">平均取得単価:</span><span class="font-bold text-white" id="holding-avg-price">¥ 0</span></div>
+                        <div class="flex justify-between mt-3 pt-2 border-t border-slate-700"><span class="text-slate-300">含み損益:</span><span class="font-bold" id="holding-profit">¥ 0</span></div>
+                    </div>
+                    <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-slate-400">取引数量</span>
+                            <div class="space-x-1">
+                                <button class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded transition" onclick="setTradeQty(10)">+10</button>
+                                <button class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded transition" onclick="setTradeQty(100)">+100</button>
+                                <button class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded transition" onclick="setTradeQtyMax()">MAX</button>
+                            </div>
+                        </div>
+                        <input type="number" id="trade-qty" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none focus:border-blue-500 transition mb-3" min="1" value="10">
+                        <div class="flex gap-2">
+                            <button onclick="buyStock()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded transition shadow-[0_0_10px_rgba(16,185,129,0.2)]">購入 (BUY)</button>
+                            <button onclick="sellStock()" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 rounded transition shadow-[0_0_10px_rgba(244,63,94,0.2)]">売却 (SELL)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右カラム: ポートフォリオ & ニュース -->
+        <section class="w-full md:w-1/4 lg:w-1/5 bg-slate-900 border-l border-slate-800 flex flex-col overflow-hidden shrink-0">
+            <div class="h-1/2 flex flex-col border-b border-slate-800">
+                <div class="p-3 border-b border-slate-800 bg-slate-800/50 flex justify-between items-center shrink-0">
+                    <h2 class="font-semibold text-slate-200"><i class="fa-solid fa-wallet mr-2"></i>ポートフォリオ</h2>
+                </div>
+                <div id="portfolio-list" class="flex-1 overflow-y-auto p-2"><p class="text-slate-500 text-sm text-center mt-4">保有株式はありません</p></div>
+            </div>
+            <div class="h-1/2 flex flex-col">
+                <div class="p-3 border-b border-slate-800 bg-slate-800/50 shrink-0"><h2 class="font-semibold text-slate-200"><i class="fa-solid fa-newspaper mr-2"></i>重要ニュース</h2></div>
+                <div id="news-history" class="flex-1 overflow-y-auto p-3 space-y-3"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer: ティッカー -->
+    <footer class="h-8 bg-slate-950 border-t border-slate-800 flex items-center overflow-hidden shrink-0 ticker-container relative">
+        <div class="absolute left-0 bg-slate-900 z-10 px-3 h-full flex items-center border-r border-slate-700 shadow-[5px_0_10px_rgba(0,0,0,0.5)]"><span class="text-xs font-bold text-red-500">BREAKING NEWS</span></div>
+        <div id="news-ticker" class="animate-ticker text-sm text-slate-300">市場がオープンしました。最新のニュースがここに表示されます...</div>
+    </footer>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="fixed top-20 right-4 z-50 flex flex-col items-end pointer-events-none"></div>
+
+    <!-- アプリ本体 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="./assets/js/app.js"></script>
 </body>
 </html>
