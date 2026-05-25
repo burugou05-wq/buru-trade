@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BURU_TRADE - Web版株取引シミュレーション</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div class="container">
+        <h1>BURU_TRADE</h1>
+        <section id="status">
+            <p><strong>Day:</strong> <span id="day">1</span></p>
+            <p><strong>Cash:</strong> $<span id="cash">1000.00</span></p>
+            <p><strong>Net Worth:</strong> $<span id="netWorth">1000.00</span></p>
+            <h2>Holdings</h2>
+            <ul id="holdingsList">
+                <li>(none)</li>
+            </ul>
+            <h2>Market Prices</h2>
+            <table id="marketTable">
+                <thead><tr><th>Company</th><th>Price</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </section>
+        <section id="controls">
+            <h2>Action</h2>
+            <select id="actionSelect">
+                <option value="buy">Buy</option>
+                <option value="sell">Sell</option>
+                <option value="skip">Skip (Next Day)</option>
+            </select>
+            <div id="tradeForm" class="hidden">
+                <label for="companySelect">Company:</label>
+                <select id="companySelect"></select>
+                <label for="shareInput">Shares:</label>
+                <input type="number" id="shareInput" min="1" value="1" />
+                <button id="confirmBtn">Confirm</button>
+            </div>
+            <button id="quitBtn">Quit (Show Final Net Worth)</button>
+        </section>
+        <section id="message" class="message"></section>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
